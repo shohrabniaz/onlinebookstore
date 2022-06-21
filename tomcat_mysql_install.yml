@@ -1,0 +1,130 @@
+---
+- name: Install different apps
+  gather_facts: No
+  hosts: webserver
+  remote_user: root
+  become_user: true
+  tasks:
+    - name: yum update
+      yum:
+        name: '*'
+        state: latest
+        
+    - name: Install java 11
+      yum:
+        name: java-11-openjdk-devel
+        state: present
+    
+    - name: Add EPEL repository
+      yum:
+        name: epel-release
+        state: present
+        
+    - name: Install basic packages
+      package:
+        name: ['vim','bash-completion','tmux','tree','htop','wget','unzip','curl','git']
+        state: present
+
+    - name: Install Java 8 CentOS
+      yum:
+        name: java-1.8.0-openjdk
+        state: present
+
+    - name: Add tomcat group
+      group:
+        name: tomcat
+
+    - name: Add "tomcat" user
+      user:
+        name: tomcat
+        group: tomcat
+        home: /usr/share/tomcat
+        createhome: no
+        system: yes
+
+    - name: Download Tomcat
+      get_url:
+        url: https://archive.apache.org/dist/tomcat/tomcat-9/v9.0.21/bin/apache-tomcat-9.0.21.tar.gz
+        dest: /tmp/apache-tomcat-9.0.21.tar.gz
+
+    - name: Create a tomcat directory
+      file:
+        path: /usr/share/tomcat
+        state: directory
+        owner: tomcat
+        group: tomcat
+
+    - name: Extract tomcat archive
+      unarchive:
+        src: /tmp/apache-tomcat-9.0.21.tar.gz"
+        dest: /usr/share/tomcat
+        owner: tomcat
+        group: tomcat
+        remote_src: yes
+        extra_opts: "--strip-components=1"
+        creates: /usr/share/tomcat/bin
+
+    - name: Copy tomcat service file
+      template:
+        src: tomcat.service.j2
+        dest: /etc/systemd/system/tomcat.service
+
+    - name: Copy war file
+      copy:
+        src: /var/lib/jenkins/workspace/bookstore-ansible-server-depoly/target/onlinebookstore-0.0.1-SNAPSHOT.war
+        dest: /usr/share/tomcat/webapps/bookstore.war
+
+    - name: Start and enable tomcat
+      service:
+        daemon_reload: yes
+        name: tomcat
+        state: started
+        enabled: yes
+
+    - name: Start and enable firewalld
+      service:
+        name: firewalld
+        state: started
+        enabled: yes
+
+    - name: Open tomcat port on the firewall
+      firewalld:
+        port: 8080/tcp
+        permanent: true
+        state: enabled
+        immediate: yes
+
+    - name: Install MariaDB package
+      yum:
+        name:
+          - mariadb-server
+          - MySQL-python
+        state: installed
+
+    - name: Copy database cnf file
+      copy:
+        src: setup/my.cnf
+        dest: /etc/my.cnf
+
+    - name: Start MariaDB Service
+      service: name=mariadb state=started enabled=yes
+
+    - name: Start firewalld
+      service: name=firewalld state=started enabled=yes
+
+    - name: insert firewalld rule
+      firewalld: port=3306/tcp permanent=true state=enabled immediate=yes
+
+    - name: Create Application Database
+      mysql_db: name=onlinebookstore state=present
+
+    - name: Create Application DB User
+      mysql_user: name=bookstore password=123456 priv=*.*:ALL host='localhost' state=present
+
+    - name: Copy db sql file
+      copy:
+        src: setup/CreateDatastore.sql
+        dest: /tmp/db-load-script.sql
+
+    - name: Load Inventory Data
+      shell: mysql -f < /tmp/db-load-script.sql
