@@ -45,16 +45,17 @@
   		<artifactId>javax.servlet-api</artifactId>
   		<version>3.1.0</version>
   	</dependency>
+	
 	<dependency>
             <groupId>com.bjit.lnintegration.21x.LNIntegration</groupId>
-            <artifactId>LNIntegration-1.0</artifactId>
+            <artifactId>LNIntegration</artifactId>
             <version>1.0</version>
-        </dependency>
+    </dependency>
 		
-		 <dependency>
+	<dependency>
             <groupId>com.bjit.integration.21x.CommonCodeUtil</groupId>
-            <artifactId>CommonCodeUtility-21.0</artifactId>
+            <artifactId>CommonCodeUtility</artifactId>
             <version>21.0</version>
-        </dependency>
+    </dependency>
   </dependencies>
 </project>
